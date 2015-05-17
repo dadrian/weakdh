@@ -26,7 +26,7 @@ type SingleHostCheck struct {
 	DHParams       *ztls.DHParams `json:"dh_params"`
 	ExportDHParams *ztls.DHParams `json:"export_dh_params"`
 	ChromeDHParams *ztls.DHParams `json:"chrome_dh_params"`
-	Error          error          `json:"error"`
+	Error          *string        `json:"error"`
 }
 
 type ServerCheckParams struct {
@@ -152,12 +152,19 @@ func handshakes() gin.HandlerFunc {
 				}(fullAddress, checkGroup)
 
 				checkGroup.Wait()
+
+				var errStringPtr *string
+				if connErr != nil {
+					s := connErr.Error()
+					errStringPtr = &s
+				}
 				out := &SingleHostCheck{
+					IP:             a.String(),
 					HasTLS:         !noTLS,
 					DHParams:       normal,
 					ExportDHParams: export,
 					ChromeDHParams: chrome,
-					Error:          connErr,
+					Error:          errStringPtr,
 				}
 				log.Print(i)
 				check.Results[i] = out
