@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/dadrian/weakdh/check/handlers"
 	"github.com/gin-gonic/gin"
@@ -13,6 +15,7 @@ type args struct {
 	logFileName      string
 	outputFileName   string
 	metadataFileName string
+	mode             string
 }
 
 type output struct {
@@ -34,7 +37,10 @@ func openOrDefault(filename string, defaultFile *os.File) (*os.File, error) {
 func init() {
 	flag.StringVar(&a.listenAddress, "listen-address", "127.0.0.1:8080", "ip:port to listen on")
 	flag.StringVar(&a.outputFileName, "output-file", "-", "file to write data to")
-	flag.StringVar(&a.logFileName, "log-file", "-", "file to log errors to")
+	flag.StringVar(&a.mode, "mode", "debug", "debug|test|release")
+	flag.Parse()
+
+	gin.SetMode(a.mode)
 
 	var err error
 
@@ -43,16 +49,20 @@ func init() {
 		panic("fuck")
 	}
 
-	if o.logFile, err = openOrDefault(a.logFileName, os.Stderr); err != nil {
-		//	zlog.Fatalf("Could not open log file %s: %s", a.logFileName, err.Error())
-		panic("fuck2")
-	}
-
 }
 
 func main() {
 	r := gin.Default()
+
 	checkGroup := r.Group("/check")
-	handlers.UseServerCheck(checkGroup)
-	r.Run(a.listenAddress)
+	handlers.UseServerCheck(checkGroup, o.outputFile)
+
+	s := &http.Server{
+		Addr:           a.listenAddress,
+		Handler:        r,
+		ReadTimeout:    12 * time.Second,
+		WriteTimeout:   12 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+	s.ListenAndServe()
 }

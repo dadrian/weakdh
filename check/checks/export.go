@@ -2,7 +2,6 @@ package checks
 
 import (
 	"errors"
-	"log"
 	"net"
 
 	"github.com/zmap/zgrab/ztools/ztls"
@@ -32,10 +31,7 @@ func CheckDHE(c net.Conn, name string) (*ztls.DHParams, error) {
 	config.MinVersion = ztls.VersionSSL30
 	config.ForceSuites = true
 	tlsConn := ztls.Client(c, config)
-	he := tlsConn.Handshake()
-	log.Print(he)
 	hl := tlsConn.GetHandshakeLog()
-	log.Print(hl)
 	if hl == nil {
 		return nil, nil
 	}

@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"log"
+	"encoding/json"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -17,6 +18,7 @@ type ServerCheck struct {
 	Domain  string             `json:"domain"`
 	IP      []net.IP           `json:"ip_addresses"`
 	Results []*SingleHostCheck `json:"results"`
+	Error   *string            `json:"error"`
 }
 
 type SingleHostCheck struct {
@@ -39,7 +41,6 @@ type checkHandler struct {
 
 func addServerCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		log.Print("Add Check Object")
 		check := new(ServerCheck)
 		c.Set("check", check)
 		c.Next()
@@ -48,7 +49,6 @@ func addServerCheck() gin.HandlerFunc {
 
 func bindParams() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		log.Print("Bind Params")
 		check := c.MustGet("check").(*ServerCheck)
 		p := new(ServerCheckParams)
 		if c.BindWith(p, binding.Form) != true {
@@ -67,14 +67,16 @@ func bindParams() gin.HandlerFunc {
 
 func dnsLookup() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		log.Print("DNS Lookup")
 		check := c.MustGet("check").(*ServerCheck)
 		if check.IP == nil {
 			// We have a domain, lookup IP addresses
 			addrs, err := net.LookupIP(check.Domain)
 			if err != nil {
-				c.Error(err, "DNS Lookup Failed")
-				c.AbortWithStatus(500)
+				s := "DNS lookup failed"
+				c.Error(err, s)
+				check.Error = &s
+				c.Next()
+				return
 			}
 			hostCount := len(addrs)
 			check.IP = addrs
@@ -90,7 +92,6 @@ func handshakes() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		check := c.MustGet("check").(*ServerCheck)
 		domain := check.Domain
-		log.Print(domain)
 		allHostsGroup := new(sync.WaitGroup)
 		allHostsGroup.Add(len(check.IP))
 		for idx, addr := range check.IP {
@@ -166,7 +167,6 @@ func handshakes() gin.HandlerFunc {
 					ChromeDHParams: chrome,
 					Error:          errStringPtr,
 				}
-				log.Print(i)
 				check.Results[i] = out
 
 			}(idx, addr, allHostsGroup)
@@ -181,7 +181,25 @@ func checkServer(c *gin.Context) {
 	c.JSON(http.StatusOK, check)
 }
 
-func UseServerCheck(g *gin.RouterGroup) {
-	g.Use(addServerCheck(), bindParams(), dnsLookup(), handshakes())
+func UseServerCheck(g *gin.RouterGroup, outputFile *os.File) {
+
+	outputChan := make(chan *ServerCheck, 1024)
+	enc := json.NewEncoder(outputFile)
+
+	sendToChan := func() gin.HandlerFunc {
+		return func(c *gin.Context) {
+			check := c.MustGet("check").(*ServerCheck)
+			outputChan <- check
+			c.Next()
+		}
+	}
+
+	go func() {
+		for c := range outputChan {
+			enc.Encode(c)
+		}
+	}()
+
+	g.Use(addServerCheck(), bindParams(), dnsLookup(), handshakes(), sendToChan())
 	g.GET("/", checkServer)
 }
