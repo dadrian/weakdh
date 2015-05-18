@@ -28,6 +28,7 @@ type SingleHostCheck struct {
 	DHParams       *ztls.DHParams `json:"dh_params"`
 	ExportDHParams *ztls.DHParams `json:"export_dh_params"`
 	ChromeDHParams *ztls.DHParams `json:"chrome_dh_params"`
+	ChromeCipher   *string        `json:"chrome_cipher"`
 	Error          *string        `json:"error"`
 }
 
@@ -101,6 +102,7 @@ func handshakes() gin.HandlerFunc {
 				checkGroup.Add(3)
 				fullAddress := net.JoinHostPort(a.String(), "443")
 				var normal, export, chrome *ztls.DHParams
+				var chrome_cipher string
 				var noTLS bool
 				var connErr error
 
@@ -146,7 +148,7 @@ func handshakes() gin.HandlerFunc {
 						return
 					}
 					conn.SetDeadline(dl)
-					chrome, err = checks.CheckChrome(conn, domain)
+					chrome, chrome_cipher, err = checks.CheckChrome(conn, domain)
 					if err != nil {
 						noTLS = true
 					}
@@ -165,6 +167,7 @@ func handshakes() gin.HandlerFunc {
 					DHParams:       normal,
 					ExportDHParams: export,
 					ChromeDHParams: chrome,
+					ChromeCipher:   &chrome_cipher,
 					Error:          errStringPtr,
 				}
 				check.Results[i] = out
