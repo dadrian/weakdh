@@ -8,6 +8,7 @@ import (
 
 	"github.com/dadrian/weakdh/check/handlers"
 	"github.com/gin-gonic/gin"
+	"github.com/zmap/zgrab/ztools/zlog"
 )
 
 type args struct {
@@ -45,8 +46,7 @@ func init() {
 	var err error
 
 	if o.outputFile, err = openOrDefault(a.outputFileName, os.Stdout); err != nil {
-		//zlog.Fatalf("Could not open output file %s: %s", a.outputFileName, err.Error())
-		panic("fuck")
+		zlog.Fatalf("Could not open output file %s: %s", a.outputFileName, err.Error())
 	}
 
 }
