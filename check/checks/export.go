@@ -26,11 +26,12 @@ func CheckExport(c net.Conn, name string) (*ztls.DHParams, error) {
 func CheckDHE(c net.Conn, name string) (*ztls.DHParams, error) {
 	config := new(ztls.Config)
 	config.ServerName = name
-	config.InsecureSkipVerify = true
 	config.CipherSuites = ztls.DHECiphers
+	config.InsecureSkipVerify = true
 	config.MinVersion = ztls.VersionSSL30
 	config.ForceSuites = true
 	tlsConn := ztls.Client(c, config)
+	tlsConn.Handshake()
 	hl := tlsConn.GetHandshakeLog()
 	if hl == nil {
 		return nil, nil
