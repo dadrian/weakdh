@@ -32,7 +32,7 @@ func openOrDefault(filename string, defaultFile *os.File) (*os.File, error) {
 	if filename == "-" {
 		return defaultFile, nil
 	}
-	return os.Create(filename)
+	return os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0660)
 }
 
 func init() {
