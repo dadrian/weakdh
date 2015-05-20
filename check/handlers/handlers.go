@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -48,6 +49,26 @@ func addServerCheck() gin.HandlerFunc {
 	}
 }
 
+func cleanDomain(d string) string {
+	u, err := url.Parse(d)
+	// Not a URL, just try the hostname
+	if err != nil {
+		return d
+	}
+	if u.Path == d || u.Host == "" {
+		return d
+	}
+
+	hostname := u.Host
+	h, _, e := net.SplitHostPort(hostname)
+	// If split failed, just assume we have a hostname
+	if e != nil || h == "" {
+		return hostname
+	}
+	// Split didn't fail, return what the net library thinks the host is
+	return h
+}
+
 func bindParams() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		check := c.MustGet("check").(*ServerCheck)
@@ -60,7 +81,7 @@ func bindParams() gin.HandlerFunc {
 		if ip := net.ParseIP(p.Server); ip != nil {
 			check.IP = []net.IP{ip}
 		} else {
-			check.Domain = p.Server
+			check.Domain = cleanDomain(p.Server)
 		}
 		c.Next()
 	}
