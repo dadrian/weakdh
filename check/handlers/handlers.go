@@ -16,10 +16,11 @@ import (
 )
 
 type ServerCheck struct {
-	Domain  string             `json:"domain"`
-	IP      []net.IP           `json:"ip_addresses"`
-	Results []*SingleHostCheck `json:"results"`
-	Error   *string            `json:"error"`
+	Domain    string             `json:"domain"`
+	IP        []net.IP           `json:"ip_addresses"`
+	Results   []*SingleHostCheck `json:"results"`
+	Error     *string            `json:"error"`
+	Timestamp string             `json:"timestamp"`
 }
 
 type SingleHostCheck struct {
@@ -44,6 +45,7 @@ type checkHandler struct {
 func addServerCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		check := new(ServerCheck)
+		check.Timestamp = time.Now().Format(time.RFC3339)
 		c.Set("check", check)
 		c.Next()
 	}
