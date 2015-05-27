@@ -75,8 +75,8 @@ func bindParams() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		check := c.MustGet("check").(*ServerCheck)
 		p := new(ServerCheckParams)
-		if c.BindWith(p, binding.Form) != true {
-			c.Error(errBadCheckParams, nil)
+		if c.BindWith(p, binding.Form) != nil {
+			c.Error(errBadCheckParams)
 			c.AbortWithStatus(400)
 		}
 		// Check if IP or domain
@@ -97,7 +97,7 @@ func dnsLookup() gin.HandlerFunc {
 			addrs, err := net.LookupIP(check.Domain)
 			if err != nil {
 				s := "DNS lookup failed"
-				c.Error(err, s)
+				c.Error(err)
 				check.Error = &s
 				c.Next()
 				return
